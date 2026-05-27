@@ -39,25 +39,20 @@
           <div class="writing-header">
           <div>
             <p class="date-label">Цель <span id="activeGoalNumber">1</span> из 10</p>
-            <h2 id="activeGoalTitle">Пишите от руки</h2>
+            <h2 id="activeGoalTitle">Все получится. Пиши в настоящем времени.</h2>
             </div>
             <div class="writing-actions">
-              <button class="tool-button" id="undoButton" type="button" aria-label="Отменить штрих" title="Отменить">
-                <span aria-hidden="true">↶</span>
-              </button>
-              <button class="tool-button" id="clearButton" type="button" aria-label="Очистить поле" title="Очистить">
+              <button class="tool-button" id="clearButton" type="button" aria-label="Очистить цель" title="Очистить">
                 <span aria-hidden="true">×</span>
               </button>
             </div>
           </div>
 
-          <div class="canvas-frame">
-            <canvas id="inkCanvas" aria-label="Поле для рукописного ввода"></canvas>
-          </div>
+          <textarea id="goalInput" autocomplete="off" inputmode="text" placeholder="Я легко и радостно достигаю..." aria-label="Текст цели"></textarea>
 
           <div class="text-row">
-            <input id="goalInput" type="text" autocomplete="off" placeholder="Текст цели">
-            <button class="primary-button" id="recognizeButton" type="button">Распознать</button>
+            <button class="primary-button" id="prevGoalButton" type="button">Назад</button>
+            <button class="primary-button" id="nextGoalButton" type="button">Следующая</button>
             <button class="primary-button save" id="saveButton" type="button">Сохранить</button>
           </div>
           <p class="status-line" id="statusLine" role="status" aria-live="polite"></p>

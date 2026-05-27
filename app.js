@@ -1,13 +1,13 @@
 const STORE_KEY = "bt-10-goals-v1";
 const goalCount = 10;
+const emptyGoalTitle = "Все получится. Пиши в настоящем времени.";
 
 const state = {
   activeIndex: 0,
   todayKey: toDateKey(new Date()),
   archiveMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   entries: loadEntries(),
-  strokes: [],
-  redo: []
+  saveTimer: null
 };
 
 const els = {
@@ -17,12 +17,11 @@ const els = {
   goalList: document.querySelector("#goalList"),
   activeGoalNumber: document.querySelector("#activeGoalNumber"),
   activeGoalTitle: document.querySelector("#activeGoalTitle"),
-  canvas: document.querySelector("#inkCanvas"),
   input: document.querySelector("#goalInput"),
-  recognize: document.querySelector("#recognizeButton"),
   save: document.querySelector("#saveButton"),
   clear: document.querySelector("#clearButton"),
-  undo: document.querySelector("#undoButton"),
+  prevGoal: document.querySelector("#prevGoalButton"),
+  nextGoal: document.querySelector("#nextGoalButton"),
   status: document.querySelector("#statusLine"),
   archiveButton: document.querySelector("#archiveButton"),
   archiveView: document.querySelector("#archiveView"),
@@ -35,9 +34,6 @@ const els = {
   installButton: document.querySelector("#installButton")
 };
 
-const ctx = els.canvas.getContext("2d");
-let drawing = false;
-let activeStroke = null;
 let deferredPrompt = null;
 
 init();
@@ -47,25 +43,26 @@ function init() {
   renderDate();
   renderGoals();
   selectGoal(0);
-  setupCanvas();
   bindEvents();
   registerServiceWorker();
 }
 
 function bindEvents() {
   els.save.addEventListener("click", saveActiveGoal);
+  els.clear.addEventListener("click", clearActiveGoal);
+  els.prevGoal.addEventListener("click", () => moveGoal(-1));
+  els.nextGoal.addEventListener("click", () => moveGoal(1));
+  els.input.addEventListener("input", queueSave);
   els.input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") saveActiveGoal();
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      moveGoal(1);
+    }
   });
-  els.clear.addEventListener("click", clearInk);
-  els.undo.addEventListener("click", undoStroke);
-  els.recognize.addEventListener("click", recognizeInk);
   els.archiveButton.addEventListener("click", showArchive);
   els.backButton.addEventListener("click", showDaily);
   els.prevMonth.addEventListener("click", () => shiftMonth(-1));
   els.nextMonth.addEventListener("click", () => shiftMonth(1));
-
-  window.addEventListener("resize", resizeCanvas);
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredPrompt = event;
@@ -125,151 +122,43 @@ function renderGoals() {
 }
 
 function selectGoal(index) {
+  saveActiveGoal({ quiet: true });
   state.activeIndex = index;
   const goal = state.entries[state.todayKey][index] || "";
   els.activeGoalNumber.textContent = String(index + 1);
-  els.activeGoalTitle.textContent = goal ? goal : "Пишите от руки";
+  els.activeGoalTitle.textContent = goal ? goal : emptyGoalTitle;
   els.input.value = goal;
-  state.strokes = [];
-  state.redo = [];
   renderGoals();
-  clearInk();
   setStatus("");
+  setTimeout(() => els.input.focus(), 0);
 }
 
-function saveActiveGoal() {
+function saveActiveGoal(options = {}) {
+  clearTimeout(state.saveTimer);
   const value = els.input.value.trim();
   state.entries[state.todayKey][state.activeIndex] = value;
   persist();
   renderGoals();
-  els.activeGoalTitle.textContent = value || "Пишите от руки";
-  setStatus(value ? "Сохранено" : "Очищено");
+  els.activeGoalTitle.textContent = value || emptyGoalTitle;
+  if (!options.quiet) setStatus(value ? "Сохранено" : "Очищено");
 }
 
-function setupCanvas() {
-  resizeCanvas();
-  els.canvas.addEventListener("pointerdown", startStroke);
-  els.canvas.addEventListener("pointermove", moveStroke);
-  els.canvas.addEventListener("pointerup", endStroke);
-  els.canvas.addEventListener("pointercancel", endStroke);
-  els.canvas.addEventListener("pointerleave", endStroke);
+function queueSave() {
+  setStatus("Сохраняю...");
+  clearTimeout(state.saveTimer);
+  state.saveTimer = setTimeout(() => saveActiveGoal({ quiet: true }), 350);
 }
 
-function resizeCanvas() {
-  const rect = els.canvas.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  const snapshot = [...state.strokes];
-  els.canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-  els.canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  state.strokes = snapshot;
-  redrawInk();
+function clearActiveGoal() {
+  els.input.value = "";
+  saveActiveGoal();
+  els.input.focus();
 }
 
-function startStroke(event) {
-  drawing = true;
-  els.canvas.setPointerCapture(event.pointerId);
-  activeStroke = [pointFromEvent(event)];
-  state.redo = [];
-}
-
-function moveStroke(event) {
-  if (!drawing || !activeStroke) return;
-  const point = pointFromEvent(event);
-  activeStroke.push(point);
-  drawSegment(activeStroke[activeStroke.length - 2], point);
-}
-
-function endStroke() {
-  if (!drawing || !activeStroke) return;
-  drawing = false;
-  if (activeStroke.length > 1) {
-    state.strokes.push(activeStroke);
-  }
-  activeStroke = null;
-}
-
-function pointFromEvent(event) {
-  const rect = els.canvas.getBoundingClientRect();
-  return {
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top,
-    t: Date.now()
-  };
-}
-
-function drawSegment(from, to) {
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "#23201b";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(from.x, from.y);
-  ctx.lineTo(to.x, to.y);
-  ctx.stroke();
-}
-
-function redrawInk() {
-  ctx.clearRect(0, 0, els.canvas.width, els.canvas.height);
-  for (const stroke of state.strokes) {
-    for (let index = 1; index < stroke.length; index += 1) {
-      drawSegment(stroke[index - 1], stroke[index]);
-    }
-  }
-}
-
-function clearInk() {
-  state.strokes = [];
-  state.redo = [];
-  ctx.clearRect(0, 0, els.canvas.width, els.canvas.height);
-}
-
-function undoStroke() {
-  const stroke = state.strokes.pop();
-  if (!stroke) return;
-  state.redo.push(stroke);
-  redrawInk();
-}
-
-async function recognizeInk() {
-  if (!state.strokes.length) {
-    setStatus("Напишите цель");
-    return;
-  }
-
-  const createRecognizer = navigator.createHandwritingRecognizer
-    || navigator.handwriting?.createRecognizer?.bind(navigator.handwriting);
-  const Drawing = window.HandwritingDrawing || navigator.handwriting?.HandwritingDrawing;
-  const Stroke = window.HandwritingStroke || navigator.handwriting?.HandwritingStroke;
-
-  if (!createRecognizer || !Drawing || !Stroke) {
-    setStatus("Распознавание недоступно в этом браузере");
-    return;
-  }
-
-  try {
-    setStatus("Распознаю...");
-    const recognizer = await createRecognizer({
-      languages: ["ru-RU", "en-US"]
-    });
-    const drawingData = new Drawing();
-    state.strokes.forEach((stroke) => {
-      const strokeData = new Stroke();
-      stroke.forEach((point) => strokeData.addPoint(point));
-      drawingData.addStroke(strokeData);
-    });
-    const results = await recognizer.recognize(drawingData);
-    const text = results?.[0]?.text?.trim();
-    if (text) {
-      els.input.value = text;
-      saveActiveGoal();
-      setStatus("Распознано и сохранено");
-    } else {
-      setStatus("Текст не найден");
-    }
-  } catch (error) {
-    setStatus("Не удалось распознать");
-  }
+function moveGoal(delta) {
+  saveActiveGoal({ quiet: true });
+  const nextIndex = Math.min(goalCount - 1, Math.max(0, state.activeIndex + delta));
+  selectGoal(nextIndex);
 }
 
 function showArchive() {
