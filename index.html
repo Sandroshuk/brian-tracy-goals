@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f7f3ea">
+    <title>10 целей</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+          <p class="date-label" id="todayLabel"></p>
+          <h1>10 целей</h1>
+          </div>
+        </div>
+        <div class="day-progress" aria-label="Прогресс на сегодня">
+          <span id="progressText">0/10</span>
+          <div class="progress-track"><span id="progressBar"></span></div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="archiveButton" type="button" aria-label="Архив за месяц" title="Архив">
+            <span aria-hidden="true">▦</span>
+          </button>
+          <button class="icon-button" id="installButton" type="button" aria-label="Установить приложение" title="Установить" hidden>
+            <span aria-hidden="true">⌂</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="workspace" id="dailyView" aria-label="Цели на сегодня">
+        <aside class="goal-list" id="goalList"></aside>
+
+        <section class="writing-panel">
+          <div class="writing-header">
+          <div>
+            <p class="date-label">Цель <span id="activeGoalNumber">1</span> из 10</p>
+            <h2 id="activeGoalTitle">Пишите от руки</h2>
+            </div>
+            <div class="writing-actions">
+              <button class="tool-button" id="undoButton" type="button" aria-label="Отменить штрих" title="Отменить">
+                <span aria-hidden="true">↶</span>
+              </button>
+              <button class="tool-button" id="clearButton" type="button" aria-label="Очистить поле" title="Очистить">
+                <span aria-hidden="true">×</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="canvas-frame">
+            <canvas id="inkCanvas" aria-label="Поле для рукописного ввода"></canvas>
+          </div>
+
+          <div class="text-row">
+            <input id="goalInput" type="text" autocomplete="off" placeholder="Текст цели">
+            <button class="primary-button" id="recognizeButton" type="button">Распознать</button>
+            <button class="primary-button save" id="saveButton" type="button">Сохранить</button>
+          </div>
+          <p class="status-line" id="statusLine" role="status" aria-live="polite"></p>
+        </section>
+      </section>
+
+      <section class="archive-view" id="archiveView" aria-label="Архив за месяц" hidden>
+        <div class="archive-head">
+          <button class="icon-button" id="backButton" type="button" aria-label="Назад" title="Назад">
+            <span aria-hidden="true">‹</span>
+          </button>
+          <div>
+            <p class="date-label">Архив</p>
+            <h2 id="monthTitle"></h2>
+          </div>
+          <div class="month-nav">
+            <button class="icon-button" id="prevMonth" type="button" aria-label="Предыдущий месяц" title="Предыдущий">
+              <span aria-hidden="true">‹</span>
+            </button>
+            <button class="icon-button" id="nextMonth" type="button" aria-label="Следующий месяц" title="Следующий">
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        </div>
+        <div class="archive-days" id="archiveDays"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
