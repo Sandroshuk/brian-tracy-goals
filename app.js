@@ -1,5 +1,5 @@
 const STORE_KEY = "bt-10-goals-v1";
-const APP_VERSION = "3";
+const APP_VERSION = "5";
 const goalCount = 10;
 const emptyGoalTitle = "Все получится. Пиши в настоящем времени.";
 
@@ -27,6 +27,9 @@ const els = {
   archiveButton: document.querySelector("#archiveButton"),
   archiveView: document.querySelector("#archiveView"),
   dailyView: document.querySelector("#dailyView"),
+  completeView: document.querySelector("#completeView"),
+  editToday: document.querySelector("#editTodayButton"),
+  completeArchive: document.querySelector("#completeArchiveButton"),
   backButton: document.querySelector("#backButton"),
   monthTitle: document.querySelector("#monthTitle"),
   archiveDays: document.querySelector("#archiveDays"),
@@ -43,9 +46,13 @@ function init() {
   ensureToday();
   renderDate();
   renderGoals();
-  selectGoal(0);
   bindEvents();
   registerServiceWorker();
+  if (isTodayComplete()) {
+    showComplete();
+  } else {
+    selectGoal(firstEmptyGoalIndex(), { skipSave: true });
+  }
 }
 
 function bindEvents() {
@@ -53,7 +60,7 @@ function bindEvents() {
   els.clear.addEventListener("click", clearActiveGoal);
   els.prevGoal.addEventListener("click", () => moveGoal(-1));
   els.nextGoal.addEventListener("click", () => moveGoal(1));
-  els.input.addEventListener("input", queueSave);
+  els.input.addEventListener("input", saveDraft);
   els.input.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
@@ -61,9 +68,15 @@ function bindEvents() {
     }
   });
   els.archiveButton.addEventListener("click", showArchive);
-  els.backButton.addEventListener("click", showDaily);
+  els.editToday.addEventListener("click", showTodayEditor);
+  els.completeArchive.addEventListener("click", showArchive);
+  els.backButton.addEventListener("click", showHome);
   els.prevMonth.addEventListener("click", () => shiftMonth(-1));
   els.nextMonth.addEventListener("click", () => shiftMonth(1));
+  window.addEventListener("pagehide", saveDraft);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveDraft();
+  });
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredPrompt = event;
@@ -122,8 +135,8 @@ function renderGoals() {
   els.progressBar.style.width = `${(filledCount / goalCount) * 100}%`;
 }
 
-function selectGoal(index) {
-  saveActiveGoal({ quiet: true });
+function selectGoal(index, options = {}) {
+  if (!options.skipSave) saveActiveGoal({ quiet: true, skipComplete: true });
   state.activeIndex = index;
   const goal = state.entries[state.todayKey][index] || "";
   els.activeGoalNumber.textContent = String(index + 1);
@@ -143,14 +156,12 @@ function saveActiveGoal(options = {}) {
   if (!options.quiet || wasFilled !== Boolean(value)) renderGoals();
   els.activeGoalTitle.textContent = value || emptyGoalTitle;
   if (!options.quiet) setStatus(value ? "Сохранено" : "Очищено");
-}
-
-function queueSave() {
-  clearTimeout(state.saveTimer);
-  state.saveTimer = setTimeout(() => saveDraft(), 700);
+  if (!options.skipComplete && isTodayComplete()) showComplete();
 }
 
 function saveDraft() {
+  if (els.dailyView.hidden) return;
+  clearTimeout(state.saveTimer);
   const value = els.input.value.trim();
   const wasFilled = Boolean(state.entries[state.todayKey][state.activeIndex]);
   state.entries[state.todayKey][state.activeIndex] = value;
@@ -166,20 +177,42 @@ function clearActiveGoal() {
 }
 
 function moveGoal(delta) {
-  saveActiveGoal({ quiet: true });
+  saveActiveGoal({ quiet: true, skipComplete: true });
+  if (isTodayComplete() && state.activeIndex === goalCount - 1 && delta > 0) {
+    showComplete();
+    return;
+  }
   const nextIndex = Math.min(goalCount - 1, Math.max(0, state.activeIndex + delta));
   selectGoal(nextIndex);
 }
 
 function showArchive() {
   els.dailyView.hidden = true;
+  els.completeView.hidden = true;
   els.archiveView.hidden = false;
   renderArchive();
 }
 
-function showDaily() {
+function showHome() {
+  if (isTodayComplete()) {
+    showComplete();
+  } else {
+    showTodayEditor();
+  }
+}
+
+function showTodayEditor() {
   els.archiveView.hidden = true;
+  els.completeView.hidden = true;
   els.dailyView.hidden = false;
+  selectGoal(Math.min(state.activeIndex, goalCount - 1), { skipSave: true });
+}
+
+function showComplete() {
+  renderGoals();
+  els.dailyView.hidden = true;
+  els.archiveView.hidden = true;
+  els.completeView.hidden = false;
 }
 
 function shiftMonth(delta) {
@@ -256,6 +289,15 @@ function loadEntries() {
 
 function persist() {
   localStorage.setItem(STORE_KEY, JSON.stringify(state.entries));
+}
+
+function isTodayComplete() {
+  return state.entries[state.todayKey].every((goal) => goal.trim());
+}
+
+function firstEmptyGoalIndex() {
+  const index = state.entries[state.todayKey].findIndex((goal) => !goal.trim());
+  return index === -1 ? 0 : index;
 }
 
 function setStatus(text) {

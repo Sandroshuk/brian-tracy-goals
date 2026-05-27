@@ -1,4 +1,4 @@
-const CACHE = "bt-10-goals-v3";
+const CACHE = "bt-10-goals-v5";
 const ASSETS = [
   "./",
   "./index.html",

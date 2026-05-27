@@ -367,6 +367,49 @@ textarea:focus {
   gap: 14px;
 }
 
+.complete-view {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.complete-panel {
+  width: min(680px, 100%);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  padding: clamp(22px, 5vw, 46px);
+  display: grid;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.complete-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 8px;
+  background: linear-gradient(90deg, var(--accent), var(--gold), var(--rose));
+}
+
+.complete-panel h2 {
+  font-size: clamp(28px, 5vw, 46px);
+}
+
+.complete-text {
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.complete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .archive-days {
   min-height: 0;
   overflow: auto;
