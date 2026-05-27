@@ -1,4 +1,5 @@
 const STORE_KEY = "bt-10-goals-v1";
+const APP_VERSION = "3";
 const goalCount = 10;
 const emptyGoalTitle = "Все получится. Пиши в настоящем времени.";
 
@@ -136,17 +137,26 @@ function selectGoal(index) {
 function saveActiveGoal(options = {}) {
   clearTimeout(state.saveTimer);
   const value = els.input.value.trim();
+  const wasFilled = Boolean(state.entries[state.todayKey][state.activeIndex]);
   state.entries[state.todayKey][state.activeIndex] = value;
   persist();
-  renderGoals();
+  if (!options.quiet || wasFilled !== Boolean(value)) renderGoals();
   els.activeGoalTitle.textContent = value || emptyGoalTitle;
   if (!options.quiet) setStatus(value ? "Сохранено" : "Очищено");
 }
 
 function queueSave() {
-  setStatus("Сохраняю...");
   clearTimeout(state.saveTimer);
-  state.saveTimer = setTimeout(() => saveActiveGoal({ quiet: true }), 350);
+  state.saveTimer = setTimeout(() => saveDraft(), 700);
+}
+
+function saveDraft() {
+  const value = els.input.value.trim();
+  const wasFilled = Boolean(state.entries[state.todayKey][state.activeIndex]);
+  state.entries[state.todayKey][state.activeIndex] = value;
+  persist();
+  els.activeGoalTitle.textContent = value || emptyGoalTitle;
+  if (wasFilled !== Boolean(value)) renderGoals();
 }
 
 function clearActiveGoal() {
@@ -266,6 +276,6 @@ function parseDateKey(key) {
 
 function registerServiceWorker() {
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register(`sw.js?v=${APP_VERSION}`).catch(() => {});
   }
 }
